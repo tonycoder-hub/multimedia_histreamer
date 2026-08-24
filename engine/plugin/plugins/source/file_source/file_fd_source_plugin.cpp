@@ -16,9 +16,9 @@
 #define HST_LOG_TAG "FileFdSourcePlugin"
 
 #include "file_fd_source_plugin.h"
+#include "file_fd_uri_parser.h"
 #include <cerrno>
 #include <cstring>
-#include <regex>
 #ifdef WIN32
 #include <fcntl.h>
 #else
@@ -131,7 +131,7 @@ Status FileFdSourcePlugin::SeekToPos(int64_t offset)
     return Status::OK;
 }
 
-// uri format:fd://xxxx?offset=xxxx&size=xxx or fd://xxxx
+// uri format: fd://xxxx?offset=xxxx&size=xxx or fd://xxxx
 Status FileFdSourcePlugin::ParseUriInfo(const std::string& uri)
 {
     if (uri.empty()) {
@@ -139,23 +139,24 @@ Status FileFdSourcePlugin::ParseUriInfo(const std::string& uri)
         return Status::ERROR_INVALID_PARAMETER;
     }
     MEDIA_LOG_D("uri: " PUBLIC_LOG_S, uri.c_str());
-    std::smatch fdUriMatch;
-    FALSE_RETURN_V_MSG_E(std::regex_match(uri, fdUriMatch, std::regex("^fd://(.*)?offset=(.*)&size=(.*)")) ||
-        std::regex_match(uri, fdUriMatch, std::regex("^fd://(.*)")),
-        Status::ERROR_INVALID_PARAMETER, "Invalid fd uri format: " PUBLIC_LOG_S, uri.c_str());
-    fd_ = std::stoi(fdUriMatch[1].str()); // 1: sub match fd subscript
+    FdUriFields fields;
+    if (!ParseFdUriFields(uri, fields)) {
+        MEDIA_LOG_E("Invalid fd uri format: " PUBLIC_LOG_S, uri.c_str());
+        return Status::ERROR_INVALID_PARAMETER;
+    }
+    fd_ = fields.fd;
     FALSE_RETURN_V_MSG_E(fd_ != -1 && OSAL::FileSystem::IsRegularFile(fd_),
         Status::ERROR_INVALID_PARAMETER, "Invalid fd: " PUBLIC_LOG_D32, fd_);
     fileSize_ = GetFileSize(fd_);
-    if (fdUriMatch.size() == 4) { // 4：4 sub match
-        offset_ = std::stoll(fdUriMatch[2].str()); // 2: sub match offset subscript
+    if (fields.hasRange) {
+        offset_ = fields.offset;
         if (static_cast<uint64_t>(offset_) > fileSize_) {
             offset_ = fileSize_;
         }
-        size_ = static_cast<uint64_t>(std::stoll(fdUriMatch[3].str())); // 3: sub match size subscript
+        size_ = static_cast<uint64_t>(fields.size);
         uint64_t remainingSize = fileSize_ - offset_;
         if (size_ > remainingSize) {
-            size_ = remainingSize; 
+            size_ = remainingSize;
         }
     } else {
         size_ = fileSize_;

@@ -39,7 +39,10 @@ ohos_source_set("filefdsource") {
   subsystem_name = "multimedia"
   part_name = "histreamer"
   include_dirs = [ "//foundation/multimedia/histreamer/engine/include" ]
-  sources = [ "file_fd_source_plugin.cpp" ]
+  sources = [
+    "file_fd_source_plugin.cpp",
+    "file_fd_uri_parser.cpp",
+  ]
   public_configs = [ "//foundation/multimedia/histreamer:histreamer_presets" ]
   public_deps = [
     "//foundation/multimedia/histreamer/engine/foundation:histreamer_foundation",
