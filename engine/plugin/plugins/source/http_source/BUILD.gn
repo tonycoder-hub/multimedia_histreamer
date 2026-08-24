@@ -24,6 +24,7 @@ ohos_source_set("httpsource") {
     "//foundation/multimedia/histreamer/engine/include",
   ]
   sources = [
+    "download/content_range_parser.cpp",
     "download/downloader.cpp",
     "download/http_curl_client.cpp",
     "hls/hls_media_downloader.cpp",
