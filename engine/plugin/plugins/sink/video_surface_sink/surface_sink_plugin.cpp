@@ -18,6 +18,7 @@
 #define HST_LOG_TAG "SurfaceSinkPlugin"
 
 #include "surface_sink_plugin.h"
+#include "surface_format_parser.h"
 #include <algorithm>
 #include "foundation/log.h"
 #include "foundation/utils/constants.h"
@@ -151,7 +152,12 @@ Status SurfaceSinkPlugin::Prepare()
         MEDIA_LOG_E("surface can not support decode output pixel fmt: " PUBLIC_LOG_U32, decodeOutputPixelFmt_);
         return Status::ERROR_UNKNOWN;
     }
-    auto surfacePixelFmt = static_cast<PixelFormat>(std::stoi(surface_->GetUserData("SURFACE_FORMAT")));
+    int32_t surfaceFmtValue = 0;
+    if (!ParseSurfaceFormat(surface_->GetUserData("SURFACE_FORMAT"), surfaceFmtValue)) {
+        MEDIA_LOG_E("invalid SURFACE_FORMAT user data");
+        return Status::ERROR_INVALID_PARAMETER;
+    }
+    auto surfacePixelFmt = static_cast<PixelFormat>(surfaceFmtValue);
     if (decodeOutputSurfacePixelFmt != surfacePixelFmt) {
         MEDIA_LOG_W("decode output surface pixel fmt: " PUBLIC_LOG_U32 " is diff from surface pixel fmt: "
             PUBLIC_LOG_U32, static_cast<uint32_t>(decodeOutputSurfacePixelFmt), static_cast<uint32_t>(surfacePixelFmt));
