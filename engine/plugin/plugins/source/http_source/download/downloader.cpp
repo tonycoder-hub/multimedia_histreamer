@@ -15,6 +15,7 @@
 #define HST_LOG_TAG "Downloader"
 
 #include "downloader.h"
+#include "content_range_parser.h"
 
 #include "http_curl_client.h"
 #include "foundation/utils/steady_clock.h"
@@ -424,16 +425,16 @@ size_t Downloader::RxHeaderData(void* buffer, size_t size, size_t nitems, void* 
         char* token = strtok_s(nullptr, ":", &next);
         FALSE_RETURN_V(token != nullptr, size * nitems);
         char* strRange = StringTrim(token);
-        size_t start;
-        size_t end;
-        size_t fileLen;
-        FALSE_LOG_MSG(sscanf_s(strRange, "bytes %ld-%ld/%ld", &start, &end, &fileLen) != -1,
-            "sscanf get range failed");
-        if (info->fileContentLen > 0 && info->fileContentLen != fileLen) {
-            MEDIA_LOG_E("FileContentLen doesn't equal to fileLen");
-        }
-        if (info->fileContentLen == 0) {
-            info->fileContentLen = fileLen;
+        ContentRangeFields range;
+        if (!ParseContentRange(strRange, range)) {
+            MEDIA_LOG_E("sscanf get range failed");
+        } else {
+            if (info->fileContentLen > 0 && info->fileContentLen != range.fileLen) {
+                MEDIA_LOG_E("FileContentLen doesn't equal to fileLen");
+            }
+            if (info->fileContentLen == 0) {
+                info->fileContentLen = range.fileLen;
+            }
         }
     }
     mediaDownloader->currentRequest_->SaveHeader(info);
