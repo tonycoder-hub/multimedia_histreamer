@@ -22,6 +22,7 @@
 #include <cstring>
 #include "foundation/log.h"
 #include "foundation/utils/constants.h"
+#include <cstdint>
 #include "plugin/common/plugin_time.h"
 
 namespace OHOS {
@@ -92,6 +93,17 @@ Status WavDemuxerPlugin::GetMediaInfo(MediaInfo& mediaInfo)
     }
     MEDIA_LOG_D("wavHeadLength_ " PUBLIC_LOG_U32, wavHeadLength_);
     dataOffset_ = wavHeadLength_;
+    if (wavHeader_.sampleRate == 0 || wavHeader_.bitsPerSample == 0 || wavHeader_.numChannels == 0) {
+        MEDIA_LOG_E("invalid wav fmt divisor");
+        return Status::ERROR_INVALID_PARAMETER;
+    }
+    const uint64_t fmtProduct = static_cast<uint64_t>(wavHeader_.sampleRate) *
+        static_cast<uint64_t>(wavHeader_.bitsPerSample) *
+        static_cast<uint64_t>(wavHeader_.numChannels);
+    if (fmtProduct == 0 || fmtProduct > static_cast<uint64_t>(UINT32_MAX)) {
+        MEDIA_LOG_E("wav fmt divisor overflow");
+        return Status::ERROR_INVALID_PARAMETER;
+    }
     mediaInfo.tracks.resize(1);
     if (wavHeader_.numChannels == 1) {
         mediaInfo.tracks[0].Set<Tag::AUDIO_CHANNEL_LAYOUT>(AudioChannelLayout::MONO);
