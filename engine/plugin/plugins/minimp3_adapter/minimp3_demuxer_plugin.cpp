@@ -222,6 +222,9 @@ Status Minimp3DemuxerPlugin::GetMediaInfo(MediaInfo& mediaInfo)
 
 uint64_t Minimp3DemuxerPlugin::GetCurrentPositionTimeS(void)
 {
+    if (mp3DemuxerAttr_.bitRate == 0) {
+        return 0;
+    }
     uint64_t currentTime = (static_cast<uint64_t>(currentDemuxerPos_ - mp3DemuxerAttr_.id3v2Size) * 8 * HST_MSECOND) /
         mp3DemuxerAttr_.bitRate;
     return currentTime;
