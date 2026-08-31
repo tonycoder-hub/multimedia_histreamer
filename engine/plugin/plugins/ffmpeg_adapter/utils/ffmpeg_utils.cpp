@@ -250,6 +250,9 @@ void RemoveDelimiter(char delimiter, std::string& str)
 {
     for (auto it = std::find(str.begin(), str.end(), delimiter); it != str.end();) {
         it = str.erase(it);
+        if (it == str.end()) {
+            break;
+        }
         if (*it != delimiter) {
             it = std::find(it, str.end(), delimiter);
         }
