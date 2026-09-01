@@ -390,6 +390,9 @@ Status MiniMP4DemuxerPlugin::SeekTo(int32_t trackId, int64_t seekTime, SeekMode 
     unsigned int frameSize = 0;
     unsigned int timeStamp = 0;
     unsigned int duration = 0;
+    if (miniMP4_.track == nullptr || miniMP4_.track->sample_count == 0) {
+        return Status::ERROR_INVALID_PARAMETER;
+    }
     uint64_t offsetStart = MP4D_frame_offset(&miniMP4_, 0, 0, &frameSize, &timeStamp, &duration);
     uint64_t offsetEnd =
         MP4D_frame_offset(&miniMP4_, 0, miniMP4_.track->sample_count - 1, &frameSize, &timeStamp, &duration);
@@ -426,6 +429,9 @@ Status MiniMP4DemuxerPlugin::AudioAdapterForDecoder()
 {
     if (miniMP4_.track == nullptr) {
         return Status::ERROR_UNKNOWN;
+    }
+    if (miniMP4_.track->dsi == nullptr || miniMP4_.track->dsi_bytes < 2) {
+        return Status::ERROR_MISMATCHED_TYPE;
     }
     /* 适配解码协议 */
     size_t sampleRateIndex = (static_cast<unsigned int>(miniMP4_.track->dsi[0] & 0x7) << 1) +
