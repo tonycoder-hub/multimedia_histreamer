@@ -78,6 +78,9 @@ Seekable HlsPlayListDownloader::GetSeekable() const
 
 void HlsPlayListDownloader::NotifyListChange()
 {
+    if (!currentVariant_ || !currentVariant_->m3u8_) {
+        return;
+    }
     auto files = currentVariant_->m3u8_->files_;
     auto playList = std::vector<PlayInfo>();
     playList.reserve(files.size());
@@ -104,12 +107,18 @@ void HlsPlayListDownloader::ParseManifest()
         updateTask_->Start();
     } else {
         if (master_->isSimple_) {   
+            if (!currentVariant_ || !currentVariant_->m3u8_) {
+                return;
+            }
             bool ret = currentVariant_->m3u8_->Update(playList_);
             if (ret) {
                NotifyListChange();
             }            
         } else {
             currentVariant_ = master_->defaultVariant_;
+            if (!currentVariant_ || !currentVariant_->m3u8_) {
+                return;
+            }
             bool ret = currentVariant_->m3u8_->Update(playList_);
             if (ret) {
                 master_->isSimple_ = true;
