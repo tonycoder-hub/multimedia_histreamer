@@ -127,7 +127,7 @@ void AVCConfigDataParser::ClearConfigSet()
 bool AVCConfigDataParser::ParseNalUnitSizeLen()
 {
     uint8_t sizeLen_ = 0;
-    if (!bitReader_.ReadBits(1, sizeLen_)) {
+    if (!bitReader_.ReadBits(8, sizeLen_)) {
         return false;
     }
 
@@ -143,13 +143,10 @@ bool AVCConfigDataParser::ParseNalUnitSizeLen()
 
 bool AVCConfigDataParser::GetSpsOrPpsLen(uint32_t& len)
 {
-    uint8_t tmp1;
-    uint8_t tmp2;
-    if (!bitReader_.ReadBits(1, tmp1) || !bitReader_.ReadBits(1, tmp2)) {
+    if (!bitReader_.ReadBits(16, len)) {
         return false;
     }
-    len = ((tmp1 << 8) | tmp2) & 0xFFFF;  // 8
-    if (len > bitReader_.GetAvailableBits()) {
+    if (len > bitReader_.GetAvailableBits() / 8) {
         MEDIA_LOG_E("len: " PUBLIC_LOG_U32 " is too large", len);
         return false;
     }
@@ -163,19 +160,19 @@ bool AVCConfigDataParser::ParseNalHeader()
                     static_cast<int32_t>(AVC_MIN_CONFIG_DATA_SIZE));
         return false;
     }
-    auto ret = bitReader_.ReadBits(1, version_); // configurationVersion = 1
+    auto ret = bitReader_.ReadBits(8, version_); // configurationVersion = 1
     if ((ret == false) || (version_ != 1)) {
         // Some parser has parser config data, so just return
         MEDIA_LOG_I("Unsupported config data, version: " PUBLIC_LOG_U8, version_);
         return false;
     }
-    if (!bitReader_.ReadBits(1, profile_)) { // AVCProfileIndication
+    if (!bitReader_.ReadBits(8, profile_)) { // AVCProfileIndication
         return false;
     }
-    if (!bitReader_.ReadBits(1, profile_compat_)) { // profile_compatibility
+    if (!bitReader_.ReadBits(8, profile_compat_)) { // profile_compatibility
         return false;
     }
-    if (!bitReader_.ReadBits(1, level_)) { // AVCLevelIndication
+    if (!bitReader_.ReadBits(8, level_)) { // AVCLevelIndication
         return false;
     }
     if (!ParseNalUnitSizeLen()) {
@@ -205,7 +202,7 @@ bool AVCConfigDataParser::CreateConfigSetItem(const uint32_t len)
 bool AVCConfigDataParser::ParseSpsOrPps(const uint32_t mask)
 {
     uint32_t setCount = 0;
-    if (!bitReader_.ReadBits(1, setCount)) {
+    if (!bitReader_.ReadBits(8, setCount)) {
         return false;
     }
     setCount &= mask;
@@ -228,10 +225,16 @@ bool AVCConfigDataParser::ParseSpsOrPps(const uint32_t mask)
             MEDIA_LOG_E("Create config set item fail");
             return false;
         }
+        size_t availBits = bitReader_.GetAvailableBits();
+        if (len > availBits / 8) {
+            MEDIA_LOG_E("len: " PUBLIC_LOG_U32 " is too large", len);
+            return false;
+        }
+        const uint8_t *nalPtr = cfgData_ + (cfgDataSize_ * 8 - availBits) / 8;
         (void)memcpy_s(&cfgSet.items[cfgSet.count]->SpsOrPps[AVC_NAL_HEADER_LEN], static_cast<size_t>(len),
-                       bitReader_.GetCurrentPtr(), static_cast<size_t>(len));
+                       nalPtr, static_cast<size_t>(len));
         cfgSet.count++;
-        bitReader_.SkipBits(len);
+        bitReader_.SkipBits(len * 8);
     }
     return true;
 }
