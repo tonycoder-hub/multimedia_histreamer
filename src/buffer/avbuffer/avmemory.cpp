@@ -159,17 +159,27 @@ bool AVMemory::ReadCommonFromMessageParcel(MessageParcel &parcel)
 {
 #ifdef MEDIA_OHOS
     (void)parcel.ReadUint64();
-    bool ret = parcel.ReadString(name_) && parcel.ReadInt32(capacity_);
-    FALSE_RETURN_V_MSG_E(capacity_ >= 0, false, "capacity is invalid");
+    std::string name;
+    int32_t capacity = 0;
+    int32_t align = 0;
+    int32_t offset = 0;
+    int32_t size = 0;
+    bool ret = parcel.ReadString(name) && parcel.ReadInt32(capacity);
+    FALSE_RETURN_V_MSG_E(ret && (capacity >= 0), false, "capacity is invalid");
 
-    ret &= parcel.ReadInt32(align_);
-    FALSE_RETURN_V_MSG_E(align_ >= 0, false, "align is invalid");
+    ret &= parcel.ReadInt32(align);
+    FALSE_RETURN_V_MSG_E(ret && (align >= 0), false, "align is invalid");
 
-    ret &= parcel.ReadInt32(offset_);
-    FALSE_RETURN_V_MSG_E(offset_ >= 0, false, "offset is invalid");
+    ret &= parcel.ReadInt32(offset);
+    FALSE_RETURN_V_MSG_E(ret && (offset >= 0) && (offset <= capacity), false, "offset is invalid");
 
-    ret &= parcel.ReadInt32(size_);
-    FALSE_RETURN_V_MSG_E((size_ >= 0) || (capacity_ < size_), false, "size is invalid");
+    ret &= parcel.ReadInt32(size);
+    FALSE_RETURN_V_MSG_E(ret && (size >= 0) && (size <= capacity), false, "size is invalid");
+    name_ = std::move(name);
+    capacity_ = capacity;
+    align_ = align;
+    offset_ = offset;
+    size_ = size;
     return ret;
 #else
     return true;
@@ -181,13 +191,18 @@ bool AVMemory::SkipCommonFromMessageParcel(MessageParcel &parcel)
 #ifdef MEDIA_OHOS
     uint64_t size = 0;
     bool ret = parcel.ReadUint64(size);
+    FALSE_RETURN_V_MSG_E(ret && size >= 8, false, "common size is invalid");
     parcel.SkipBytes(static_cast<size_t>(size) - 8); // 8: the size of size_ and offset_
 
-    ret &= parcel.ReadInt32(offset_);
-    FALSE_RETURN_V_MSG_E(offset_ >= 0, false, "offset is invalid");
+    int32_t offset = 0;
+    int32_t memSize = 0;
+    ret &= parcel.ReadInt32(offset);
+    FALSE_RETURN_V_MSG_E(ret && (offset >= 0) && (offset <= capacity_), false, "offset is invalid");
 
-    ret &= parcel.ReadInt32(size_);
-    FALSE_RETURN_V_MSG_E((size_ >= 0) || (capacity_ < size_), false, "size is invalid");
+    ret &= parcel.ReadInt32(memSize);
+    FALSE_RETURN_V_MSG_E(ret && (memSize >= 0) && (memSize <= capacity_), false, "size is invalid");
+    offset_ = offset;
+    size_ = memSize;
     return ret;
 #else
     return true;
